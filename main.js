@@ -341,6 +341,7 @@ function strict(src) {
 
 var alwaysIncludes = ['assert.js', 'sta.js'];
 function runTest262Test(src, path, pass, fail, skip) {
+  console.warn('runTest262Test', path.join('/'));
   var meta = parseFrontmatter(src);
   if (!meta) {
     skip('Test runner couldn\'t parse frontmatter');
