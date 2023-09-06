@@ -233,6 +233,7 @@ function runSources(arg, done) {
   var iframe = iframes.pop();
 
   var path = ['SYNTHETIC'].concat(arg.path);
+  console.warn('Test262, start,', arg.path.join('/'));
 
   var listener = function() {
     iframe.removeEventListener('load', listener);
@@ -250,7 +251,8 @@ function runSources(arg, done) {
       completed = true;
       if (timeout !== undefined) clearTimeout(timeout);
       iframes.push(iframe);
-      done(err, w);
+      const sucess = done(err, w);
+      console.warn('Test262, finished,', arg.path.join('/'), sucess);
     };
     w.addEventListener('error', function(e) {
       err = e;
@@ -312,24 +314,31 @@ function checkErr(negative, pass, fail) {
     if (err === errSigil) {
       if (negative) {
         fail('Expecting ' + negative.phase + ' ' + negative.type + ', but no error was thrown.');
+        return false;
       } else {
         pass();
+        return true;
       }
     } else if (err === noCompletionSigil) {
       fail('Test timed out.');
+      return false;
     } else {
       if (negative) {
         if (checkErrorType(err, w, negative.type)) {
           pass();
+          return false;
         } else {
           if (negative.phase === 'early' && err.message && err.message.match('NotEarlyError')) {
             fail('Expecting early ' + negative.type + ', but parsing succeeded without errors.');
+            return false;
           } else {
             fail('Expecting ' + negative.phase + ' ' + negative.type + ', but got an error of another kind.');  // todo more precise complaints
+            return false;
           }
         }
       } else {
         fail('Unexpected error: ' + err.message.replace(/^uncaught\W+/i, ''));
+        return false;
       }
     }
   };
@@ -341,7 +350,6 @@ function strict(src) {
 
 var alwaysIncludes = ['assert.js', 'sta.js'];
 function runTest262Test(src, path, pass, fail, skip) {
-  console.warn('runTest262Test', path.join('/'));
   var meta = parseFrontmatter(src);
   if (!meta) {
     skip('Test runner couldn\'t parse frontmatter');
