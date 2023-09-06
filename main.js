@@ -3,7 +3,11 @@
 // var zipballUrl = 'https://api.github.com/repos/tc39/test262/zipball'; // this would be nice, but while the API claims to support CORS, it doesn't for this particular endpoint
 var zipballUrl = './tc39-test262-31a30899b7.zip';
 
-var skippedRegex = /integer-limit/; // todo this should not be here, and should probably be exposed
+// todo this should not be here, and should probably be exposed
+var skipTests = [
+//
+//    'test/intl402/DateTimeFormat/prototype/formatRangeToParts/pattern-on-calendar.js',
+];
 
 
 // queue/fetch primitives
@@ -233,7 +237,8 @@ function runSources(arg, done) {
   var iframe = iframes.pop();
 
   var path = ['SYNTHETIC'].concat(arg.path);
-  console.warn('Test262, start,', arg.path.join('/'));
+  if (arg.path.join('/') !== 'test/path/test.js')
+    console.warn('Test262, start,', arg.path.join('/'));
 
   var listener = function() {
     iframe.removeEventListener('load', listener);
@@ -251,8 +256,9 @@ function runSources(arg, done) {
       completed = true;
       if (timeout !== undefined) clearTimeout(timeout);
       iframes.push(iframe);
-      const sucess = done(err, w);
-      console.warn('Test262, finished,', arg.path.join('/'), sucess);
+      const result = done(err, w);
+      if (arg.path.join('/') !== 'test/path/test.js')
+        console.warn('Test262, done,', arg.path.join('/') + ',', result);
     };
     w.addEventListener('error', function(e) {
       err = e;
@@ -314,31 +320,31 @@ function checkErr(negative, pass, fail) {
     if (err === errSigil) {
       if (negative) {
         fail('Expecting ' + negative.phase + ' ' + negative.type + ', but no error was thrown.');
-        return false;
+        return 'failed';
       } else {
         pass();
-        return true;
+        return 'passed';
       }
     } else if (err === noCompletionSigil) {
       fail('Test timed out.');
-      return false;
+      return 'failed';
     } else {
       if (negative) {
         if (checkErrorType(err, w, negative.type)) {
           pass();
-          return false;
+          return 'passed';
         } else {
           if (negative.phase === 'early' && err.message && err.message.match('NotEarlyError')) {
             fail('Expecting early ' + negative.type + ', but parsing succeeded without errors.');
-            return false;
+            return 'failed';
           } else {
             fail('Expecting ' + negative.phase + ' ' + negative.type + ', but got an error of another kind.');  // todo more precise complaints
-            return false;
+            return 'failed';
           }
         }
       } else {
         fail('Unexpected error: ' + err.message.replace(/^uncaught\W+/i, ''));
-        return false;
+        return 'failed';
       }
     }
   };
@@ -476,7 +482,9 @@ function runSubtree(root, then, ancestors, toExpand) {
   }
   var status = root.querySelector('span');
   if (root.path) { // i.e. is a file
-    if (skippedRegex.test(root.path[root.path.length - 1])) {
+      console.debug(root.path.join('/'))
+    if (skipTests.indexOf(root.path.join('/')) > -1) {
+      console.warn('Test262, done,', root.path.join('/') + ',', 'skipped');
       status.textContent = 'Skipped by runner.';
       status.className = 'skip';
       root.passes = 0;
